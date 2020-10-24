@@ -1,0 +1,68 @@
+esphome:
+  name: test
+  platform: ESP8266
+  board: nodemcuv2
+
+wifi:
+  ssid: !secret Network_SSID
+  password: !secret WiFi_Password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Test Fallback Hotspot"
+    password: "yuqZF5sKdk8n"
+
+mqtt:
+  broker: 192.168.1.31
+  # username: livingroom
+  # password: MyMQTTPassword
+  topic_prefix: home
+  id: mqtt_client
+
+text_sensor:
+  - platform: mqtt_subscribe
+    # name: "WellPump State"
+    id: wellpump_state
+    topic: home/wellpump
+    on_value:
+      then:
+        - lambda: |-
+            #include <string>
+            using namespace std;
+            time_t current_time;
+            current_time = time(NULL);
+            static int last_pub;
+            string current_state;
+            static string old_state;
+            bool display = false;
+            current_state = x;
+            if (current_state != old_state) {
+              ESP_LOGD("main", "current_state not equal to old state ... old_state: %s ... current_state: %s", old_state.c_str(), current_state.c_str());
+              display = true;
+              old_state = current_state;
+            } else if (time(NULL) - 60 > last_pub)  {
+              ESP_LOGD("main", "last_pub: %i  time(NULL): %i", last_pub, time(NULL));            
+              display = true;
+              last_pub = time(NULL);
+            }
+            if (display) {
+              ESP_LOGD("main", "Well Pump State is %s", current_state.c_str());
+              id(mqtt_client).publish("home/wellpump/test", current_state);
+              display = false;
+            }
+            
+# captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+              # if (x = "ON") {
+              #   id(mqtt_client).publish("home/wellpump/test", x);
+              # } else {
+              #   id(mqtt_client).publish("home/wellpump/test", x);
+              # }
