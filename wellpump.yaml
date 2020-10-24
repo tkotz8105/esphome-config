@@ -1,0 +1,81 @@
+esphome:
+  name: wellpump
+  platform: ESP8266
+  board: d1_mini
+
+wifi:
+  ssid: !secret Network_SSID
+  password: !secret WiFi_Password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "wellpumpFallbackHotspot"
+    password: "Ptkm0523$"
+
+mqtt:
+  broker: 192.168.1.31
+  # username: livingroom
+  # password: MyMQTTPassword
+  topic_prefix: home
+  id: mqtt_client
+  
+captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+# api:
+
+ota:
+
+sensor:
+  - platform: ct_clamp
+    id: measured_current
+    sensor: adc_sensor
+    name: "Measured Current"
+    internal: True
+    update_interval: 1s
+    filters:
+      - calibrate_linear:
+          - 0.0 -> 0.0
+          - 0.02 -> 0.0583
+          - .28 -> 0.5
+    on_value:
+      then:
+        - lambda: |-
+            #include <string>
+            using namespace std;
+            time_t current_time;
+            current_time = time(NULL);
+            static int last_pub;
+            string current_state;
+            static string old_state;
+            bool display = false;
+            if (id(measured_current).state > 0.1) {
+              current_state = "ON";
+            } else {
+              current_state = "OFF";
+            }
+            if (current_state != old_state) {
+              ESP_LOGD("main", "current_state not equal to old state ... old_state: %s ... current_state: %s", old_state.c_str(), current_state.c_str());
+              display = true;
+              old_state = current_state;
+            } else if (time(NULL) - 60 > last_pub)  {
+              ESP_LOGD("main", "last_pub: %i  time(NULL): %i", last_pub, time(NULL));            
+              display = true;
+              last_pub = time(NULL);
+            }
+            if (display) {
+              ESP_LOGD("main", "Well Pump State is %s", current_state.c_str());
+              id(mqtt_client).publish("home/wellpump", current_state);
+              display = false;
+            }
+
+  # Example source sensor
+  - platform: adc
+    pin: A0
+    id: adc_sensor
+    update_interval: 1s
+    internal: True
+
