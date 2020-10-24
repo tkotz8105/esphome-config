@@ -1,0 +1,42 @@
+esphome:
+  name: mancave_indoor_wx
+  platform: ESP8266
+  board: esp01_1m
+
+wifi:
+  ssid: !secret Network_SSID
+  password: !secret WiFi_Password
+  # use_address: bme280.local
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Bme280 Fallback Hotspot"
+    password: "Ptkm0523$"
+
+captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+i2c:
+  sda: 0
+  scl: 2
+  scan: True
+  id: bus_a
+
+sensor:
+  - platform: bme280
+    temperature:
+      name: "BME280 Temperature"
+      oversampling: 16x
+    pressure:
+      name: "BME280 Pressure"
+    humidity:
+      name: "BME280 Humidity"
+    address: 0x76
+    update_interval: 60s
